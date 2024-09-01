@@ -5,14 +5,14 @@ local Settings = {
     Tracer_Color = Color3.fromRGB(189, 181, 213),
     Tracer_Thickness = 1,
     Box_Thickness = 1,
-    Tracer_Origin = "Middle", -- Middle or Bottom if FollowMouse is on this won't matter...
+    Tracer_Origin = "Top", -- Middle or Bottom if FollowMouse is on this won't matter...
     Tracer_FollowMouse = false,
     Tracers = true
 }
 local Team_Check = {
     TeamCheck = false, -- if TeamColor is on this won't matter...
-    Green = Color3.fromRGB(0, 255, 0),
-    Red = Color3.fromRGB(255, 0, 0)
+    Green = Color3.fromRGB(189, 181, 213)
+    Red = Color3.fromRGB(189, 181, 213)
 }
 local TeamColor = true
 
@@ -59,7 +59,7 @@ local function ToColor3(col) --Function to convert, just cuz c;
     return Color3.new(r,g,b); --Color3 datatype, made of the RGB inputs
 end
 
-local black = Color3.fromRGB(0, 0 ,0)
+local black = Color3.fromRGB(189, 181, 213)
 local function ESP(plr)
     local library = {
         --//Tracer and Black Tracer(black border)
