@@ -1,177 +1,88 @@
--- Preview: https://cdn.discordapp.com/attachments/796378086446333984/818089455897542687/unknown.png
--- Made by Adrian!
-local Settings = {
-    Box_Color = Color3.fromRGB(207, 159, 255),
-    Tracer_Color = Color3.fromRGB(207, 159, 255),
-    Tracer_Thickness = 0.5,
-    Box_Thickness = 1,
-    Tracer_Origin = "Top", -- Middle or Bottom if FollowMouse is on this won't matter...
-    Tracer_FollowMouse = false,
-    Tracers = true
-}
-local Team_Check = {
-    TeamCheck = false, -- if TeamColor is on this won't matter...
-    Green = Color3.fromRGB(207, 159, 255),
-    Red = Color3.fromRGB(207, 159, 255),
-}
-local TeamColor = false
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 
---// SEPARATION
-local player = game:GetService("Players").LocalPlayer
-local camera = game:GetService("Workspace").CurrentCamera
-local mouse = player:GetMouse()
+local AimRadius = 100 -- The radius of the FOV circle
+local SilentAimEnabled = true
+local currentFovCircleColor = Color3.fromRGB(255, 0, 0) -- Initial color: Red
 
-local function NewQuad(thickness, color)
-    local quad = Drawing.new("Quad")
-    quad.Visible = false
-    quad.PointA = Vector2.new(0,0)
-    quad.PointB = Vector2.new(0,0)
-    quad.PointC = Vector2.new(0,0)
-    quad.PointD = Vector2.new(0,0)
-    quad.Color = color
-    quad.Filled = false
-    quad.Thickness = thickness
-    quad.Transparency = 1
-    return quad
+-- Create an Aim Circle
+local ScreenGui = Instance.new("ScreenGui")
+local AimCircle = Instance.new("Frame")
+
+ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+AimCircle.Parent = ScreenGui
+
+AimCircle.Size = UDim2.new(0, AimRadius * 2, 0, AimRadius * 2) -- Diameter of the circle
+AimCircle.Position = UDim2.new(0.5, -AimRadius, 0.5, -AimRadius) -- Center the circle around the middle of the screen
+AimCircle.BackgroundTransparency = 1
+AimCircle.BorderSizePixel = 0
+
+local uiCorner = Instance.new("UICorner")
+uiCorner.CornerRadius = UDim.new(1, 0)
+uiCorner.Parent = AimCircle
+
+local uiStroke = Instance.new("UIStroke")
+uiStroke.Thickness = 2
+uiStroke.Color = currentFovCircleColor -- Initial color
+uiStroke.Parent = AimCircle
+
+-- Function to update the FOV Circle color
+local function changeFovCircleColor(newColor)
+    currentFovCircleColor = newColor
+    uiStroke.Color = currentFovCircleColor
 end
 
-local function NewLine(thickness, color)
-    local line = Drawing.new("Line")
-    line.Visible = false
-    line.From = Vector2.new(0, 0)
-    line.To = Vector2.new(0, 0)
-    line.Color = color 
-    line.Thickness = thickness
-    line.Transparency = 1
-    return line
+-- Update the circle's position to keep it centered on the screen
+local function updateCirclePosition()
+    AimCircle.Position = UDim2.new(0.5, -AimRadius, 0.5, -AimRadius)
 end
 
-local function Visibility(state, lib)
-    for u, x in pairs(lib) do
-        x.Visible = state
-    end
-end
+RunService.RenderStepped:Connect(updateCirclePosition)
 
-local function ToColor3(col) --Function to convert, just cuz c;
-    local r = col.r --Red value
-    local g = col.g --Green value
-    local b = col.b --Blue value
-    return Color3.new(r,g,b); --Color3 datatype, made of the RGB inputs
-end
+-- Find the closest enemy within the FOV
+local function getClosestEnemy()
+    local closestEnemy = nil
+    local closestDistance = AimRadius
 
-local black = Color3.fromRGB(207, 159, 255)
-local function ESP(plr)
-    local library = {
-        --//Tracer and Black Tracer(black border)
-        blacktracer = NewLine(Settings.Tracer_Thickness*2, black),
-        tracer = NewLine(Settings.Tracer_Thickness, Settings.Tracer_Color),
-        --//Box and Black Box(black border)
-        black = NewQuad(Settings.Box_Thickness*2, black),
-        box = NewQuad(Settings.Box_Thickness, Settings.Box_Color),
-        --//Bar and Green Health Bar (part that moves up/down)
-        healthbar = NewLine(3, black),
-        greenhealth = NewLine(1.5, black)
-    }
-
-    local function Colorize(color)
-        for u, x in pairs(library) do
-            if x ~= library.healthbar and x ~= library.greenhealth and x ~= library.blacktracer and x ~= library.black then
-                x.Color = color
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Team ~= LocalPlayer.Team and player.Character and player.Character:FindFirstChild("Head") then
+            local pos, onScreen = Camera:WorldToScreenPoint(player.Character.Head.Position)
+            if onScreen then
+local screenSize = UserInputService:GetScreenSize()
+                local screenCenter = Vector2.new(screenSize.X / 2, screenSize.Y / 2)
+                local distance = (screenCenter - Vector2.new(pos.X, pos.Y)).magnitude
+                if distance < closestDistance then
+                    closestDistance = distance
+                    closestEnemy = player
+                end
             end
         end
     end
 
-    local function Updater()
-        local connection
-        connection = game:GetService("RunService").RenderStepped:Connect(function()
-            if plr.Character ~= nil and plr.Character:FindFirstChild("Humanoid") ~= nil and plr.Character:FindFirstChild("HumanoidRootPart") ~= nil and plr.Character.Humanoid.Health > 0 and plr.Character:FindFirstChild("Head") ~= nil then
-                local HumPos, OnScreen = camera:WorldToViewportPoint(plr.Character.HumanoidRootPart.Position)
-                if OnScreen then
-                    local head = camera:WorldToViewportPoint(plr.Character.Head.Position)
-                    local DistanceY = math.clamp((Vector2.new(head.X, head.Y) - Vector2.new(HumPos.X, HumPos.Y)).magnitude, 2, math.huge)
-                    
-                    local function Size(item)
-                        item.PointA = Vector2.new(HumPos.X + DistanceY, HumPos.Y - DistanceY*2)
-                        item.PointB = Vector2.new(HumPos.X - DistanceY, HumPos.Y - DistanceY*2)
-                        item.PointC = Vector2.new(HumPos.X - DistanceY, HumPos.Y + DistanceY*2)
-                        item.PointD = Vector2.new(HumPos.X + DistanceY, HumPos.Y + DistanceY*2)
-                    end
-                    Size(library.box)
-                    Size(library.black)
-
-                    --//Tracer 
-                    if Settings.Tracers then
-                        if Settings.Tracer_Origin == "Middle" then
-                            library.tracer.From = camera.ViewportSize*0.5
-                            library.blacktracer.From = camera.ViewportSize*0.5
-                        elseif Settings.Tracer_Origin == "Bottom" then
-                            library.tracer.From = Vector2.new(camera.ViewportSize.X*0.5, camera.ViewportSize.Y) 
-                            library.blacktracer.From = Vector2.new(camera.ViewportSize.X*0.5, camera.ViewportSize.Y)
-                        end
-                        if Settings.Tracer_FollowMouse then
-                            library.tracer.From = Vector2.new(mouse.X, mouse.Y+36)
-                            library.blacktracer.From = Vector2.new(mouse.X, mouse.Y+36)
-                        end
-                        library.tracer.To = Vector2.new(HumPos.X, HumPos.Y + DistanceY*2)
-                        library.blacktracer.To = Vector2.new(HumPos.X, HumPos.Y + DistanceY*2)
-                    else 
-                        library.tracer.From = Vector2.new(0, 0)
-                        library.blacktracer.From = Vector2.new(0, 0)
-                        library.tracer.To = Vector2.new(0, 0)
-                        library.blacktracer.To = Vector2.new(0, 02)
-                    end
-
-                    --// Health Bar
-                    local d = (Vector2.new(HumPos.X - DistanceY, HumPos.Y - DistanceY*2) - Vector2.new(HumPos.X - DistanceY, HumPos.Y + DistanceY*2)).magnitude 
-                    local healthoffset = plr.Character.Humanoid.Health/plr.Character.Humanoid.MaxHealth * d
-
-                    library.greenhealth.From = Vector2.new(HumPos.X - DistanceY - 4, HumPos.Y + DistanceY*2)
-                    library.greenhealth.To = Vector2.new(HumPos.X - DistanceY - 4, HumPos.Y + DistanceY*2 - healthoffset)
-
-                    library.healthbar.From = Vector2.new(HumPos.X - DistanceY - 4, HumPos.Y + DistanceY*2)
-                    library.healthbar.To = Vector2.new(HumPos.X - DistanceY - 4, HumPos.Y - DistanceY*2)
-
-                    local green = Color3.fromRGB(0, 255, 0)
-                    local red = Color3.fromRGB(255, 0, 0)
-
-                    library.greenhealth.Color = red:lerp(green, plr.Character.Humanoid.Health/plr.Character.Humanoid.MaxHealth);
-
-                    if Team_Check.TeamCheck then
-                        if plr.TeamColor == player.TeamColor then
-                            Colorize(Team_Check.Green)
-                        else 
-                            Colorize(Team_Check.Red)
-                        end
-                    else 
-                        library.tracer.Color = Settings.Tracer_Color
-                        library.box.Color = Settings.Box_Color
-                    end
-                    if TeamColor == true then
-                        Colorize(plr.TeamColor.Color)
-                    end
-                    Visibility(true, library)
-                else 
-                    Visibility(false, library)
-                end
-            else 
-                Visibility(false, library)
-                if game.Players:FindFirstChild(plr.Name) == nil then
-                    connection:Disconnect()
-                end
-            end
-        end)
-    end
-    coroutine.wrap(Updater)()
+    return closestEnemy
 end
 
-for i, v in pairs(game:GetService("Players"):GetPlayers()) do
-    if v.Name ~= player.Name then
-        coroutine.wrap(ESP)(v)
+-- Aim at the closest enemy's head
+local function aimAt(enemy)
+    if enemy and enemy.Character and enemy.Character:FindFirstChild("Head") then
+        local headPos = Camera:WorldToScreenPoint(enemy.Character.Head.Position)
+        UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter -- Lock the cursor to the center
+        Camera.CFrame = CFrame.new(Camera.CFrame.Position, enemy.Character.Head.Position) -- Aim at enemy's head
     end
 end
 
-game.Players.PlayerAdded:Connect(function(newplr)
-    if newplr.Name ~= player.Name then
-        coroutine.wrap(ESP)(newplr)
+RunService.RenderStepped:Connect(function()
+    if SilentAimEnabled then
+        local target = getClosestEnemy()
+        aimAt(target)
     end
 end)
+
+-- Example function to change color based on some in-game event
+-- Replace this with actual in-game logic
+local function onColorChangeRequested()
+    changeFovCircleColor(Color3.fromRGB(203, 195, 227)) -- Change color to green
+end
