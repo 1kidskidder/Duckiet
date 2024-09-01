@@ -13,7 +13,7 @@ local Team_Check = {
     Green = Color3.fromRGB(189, 181, 213)
     Red = Color3.fromRGB(189, 181, 213)
 }
-local TeamColor = true
+local TeamColor = false
 
 --// SEPARATION
 local player = game:GetService("Players").LocalPlayer
